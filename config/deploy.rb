@@ -2,7 +2,8 @@ default_run_options[:pty] = true
 ssh_options[:compression] = "none"
 set :user, "root"
 set :pub_key_filename, "id_rsa.pub"
-CLUSTER = ['cass1', 'cass2', 'cass3', 'cass4']
+CASSANDRA_CLUSTER = ['cass1', 'cass2', 'cass3', 'cass4']
+CHEF_SERVER = 'chef'
 
 # =============================================================================
 # ROLES
@@ -14,7 +15,8 @@ CLUSTER = ['cass1', 'cass2', 'cass3', 'cass4']
 # :primary => true.
 
 #role :cluster, 'cass1', 'cass2', 'cass3', 'cass4'
-role :cluster, *CLUSTER 
+role :cass_cluster, *CASSANDRA_CLUSTER 
+role :chef, 'chef'
 
 # =============================================================================
 # TASK CHAINS 
@@ -60,7 +62,7 @@ namespace :devops do
   end
 
   desc "Copy ssh keys to servers for passwordless entry"
-  task :copy_ssh_keys, :roles => [:cluster] do
+  task :copy_ssh_keys, :roles => [:cass_cluster] do
     upload File.expand_path("~/.ssh/#{pub_key_filename}"), "~/", :via => :scp
     run <<-CMDS
       mkdir -p ~/.ssh/ && chmod 700 ~/.ssh &&
@@ -69,13 +71,13 @@ namespace :devops do
     CMDS
   end
 
-  desc "Install Chef gem"
-  task :install_chef do
+  desc "Install Chef gem on clients"
+  task :install_chef, :roles => [:cass_cluster] do
     puts "gem install chef ohai"
   end
 
   desc "Install Riptano Repo"
-  task :install_riptano_repo, :roles => [:cluster] do
+  task :install_riptano_repo, :roles => [:cass_cluster] do
     repo_file = "riptano-release-5-1.el5.noarch.rpm"
     run <<-CMDS
       wget http://rpm.riptano.com/EL/5/x86_64/#{repo_file} &&
@@ -85,7 +87,86 @@ namespace :devops do
   end
 
   desc "Provision all servers"
-  task :provision_all, :roles => [:cluster] do
-    puts "Done!"
+  task :provision_all, :roles => [:cass_cluster] do
+    puts "TBD"
+  end
+
+  namespace :chef do
+    desc "Configure client using Chef Solo"
+    task :solo, :roles => [:cass_cluster] do
+      payload_filename = 'chef_payload.tgz'
+      system "tar -zcvf #{payload_filename} chef/*"
+      upload "./#{payload_filename}", "~/", :via => :scp
+      run "cd /etc/ && sudo chef-solo -l debug -c config/solo.rb -j config/dna.json"
+      system "rm ./#{payload_filenam}"
+    end
+
+    desc "Provision (install recipes on) Chef Nodes"
+    task :provision_nodes, :roles => [:cass_cluster] do
+      run "chef-client"
+    end
+
+    desc "Configure Chef Client on Nodes"
+    task :prep_nodes, :roles => [:cass_cluster] do
+      # See http://wiki.opscode.com/display/chef/Hello+World+example 
+      run <<-CMDS
+        rpm -Uvh http://download.fedora.redhat.com/pub/epel/5/x86_64/epel-release-5-3.noarch.rpm &&
+        rpm -Uvh http://download.elff.bravenet.com/5/x86_64/elff-release-5-3.noarch.rpm &&
+        yum install -y chef &&
+        sudo /sbin/service chef-client start &&
+        sudo /sbin/chkconfig chef-client on &&
+        cd /etc/chef
+        scp root@#{CHEF_SERVER}:/etc/chef/validation.pem . &&
+
+        chef_server_url  "http://#{CHEF_SERVER}:4000"
+        chef-client &&
+        rm /etc/chef/validation.pem
+      CMDS
+
+      puts "Done!"
+    end
+
+    desc "Configure Chef Server"
+    task :config_server, :roles => [:chef] do
+      # See the following links for info:
+      # http://wiki.opscode.com/display/chef/Hello+World+example 
+      # http://wiki.opscode.com/display/chef/Installation+on+RHEL+and+CentOS+5+with+RPMs
+      run <<-CMDS
+        rpm -Uvh http://download.fedora.redhat.com/pub/epel/5/x86_64/epel-release-5-3.noarch.rpm &&
+        rpm -Uvh http://download.elff.bravenet.com/5/x86_64/elff-release-5-3.noarch.rpm &&
+        yum install -y chef-server &&
+        for svc in couchdb rabbitmq-server chef-solr chef-solr-indexer chef-server; do /sbin/service $svc start && /sbin/chkconfig $svc on done &&
+        yum install -y chef-server-webui &&
+        /sbin/service chef-server-webui start &&
+        /sbin/chkconfig chef-server-webui on &&
+        yum install -y chef &&
+        sudo /sbin/service chef-client start &&
+        sudo /sbin/chkconfig chef-client on &&
+
+        # /sbin/iptables -A -i eth0 -j ACCEPT OPEN PORT 4000 and 4040
+        cd /opt &&
+        yum install -y  git &&
+        git clone git://github.com/opscode/chef-repo.git  
+
+        knife configure -i
+
+        cd /opt/chef-repo
+        rm -rf cookbooks
+        git clone git://github.com/opscode/cookbooks
+
+        knife cookbook upload -a -o /opt/chef-repo/cookbooks
+      CMDS
+
+      #put File.read("roles/default.rb"), "/opt/chef-repo/roles/default.rb", :via => :scp
+      upload "roles/default.rb", "/opt/chef-repo/roles/default.rb", :via => :scp
+
+      run <<-CMDS
+        rake roles &&
+        knife role show default &&
+        git add cookbooks &&
+        git add roles &&
+        git commit -m "Added some cookbooks and an example role to use them."
+      CMDS
+    end
   end
 end
