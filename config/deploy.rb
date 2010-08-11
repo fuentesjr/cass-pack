@@ -1,6 +1,6 @@
-default_run_options[:pty] = true
+default_run_options[:pty] = true 
 ssh_options[:compression] = "none"
-set :user, "root"
+#set :user, "root"
 set :pub_key_filename, "id_rsa.pub"
 CASSANDRA_CLUSTER = ['cass1', 'cass2', 'cass3', 'cass4']
 CHEF_SERVER = 'chef'
@@ -16,7 +16,9 @@ CHEF_SERVER = 'chef'
 
 #role :cluster, 'cass1', 'cass2', 'cass3', 'cass4'
 role :cass_cluster, *CASSANDRA_CLUSTER 
+role :testvm, 'cke-testvm1'
 role :chef, 'chef'
+role :buntuvm, 'buntuvm'
 
 # =============================================================================
 # TASK CHAINS 
@@ -92,13 +94,48 @@ namespace :devops do
   end
 
   namespace :chef do
+    desc "Testing ssh keys"
+    task :cp_keys, :roles => [:buntuvm] do
+      upload File.expand_path("~/.ssh/#{pub_key_filename}"), "~/", :via => :scp
+      run <<-CMDS
+        mkdir -p ~/.ssh/ && chmod 700 ~/.ssh &&
+        cat ~/#{pub_key_filename} >> ~/.ssh/authorized_keys &&
+        rm -f ~/#{pub_key_filename}
+      CMDS
+    end
+
+    desc "Testing Ben's Cassandra Cookbook"
+    task :test1, :roles => [:buntuvm] do
+      chef_bin = "/var/lib/gems/1.8/bin/chef-solo"
+      #sudo "apt-get install -y git-core ruby ruby-dev build-essential wget libopenssl-ruby rubygems"
+      #sudo "gem install --no-ri --no-rdoc chef ohai --source http://gems.opscode.com --source http://gems.rubyforge.org"
+      sudo "rm -rf /etc/chef"
+      sudo "mkdir -p /etc/chef"
+      sudo "git clone git://github.com/fuentesjr/chef-101.git /etc/chef" do |channel, stream, data|
+        #channel.send_data("yes\n")
+      end
+      #sudo "echo 'export PATH=/var/lib/gems/1.8/bin:$PATH' | sudo tee -a  /etc/bash.bashrc"
+      #sudo "export PATH=/var/lib/gems/1.8/bin:$PATH"
+      chef_path = "/etc/chef"
+      #sudo "chef-solo --help", :shell => "/bin/bash", :env => {"PATH" => "/var/lib/gems/1.8/bin:$PATH"}
+      #sudo "#{chef_bin} --help", :shell => "/bin/bash", :env => {"PATH" => "/var/lib/gems/1.8/bin:$PATH"}
+      sudo "#{chef_bin} -l debug -c #{chef_path}/config/solo.rb -j #{chef_path}/config/dna.json"
+    end
+
     desc "Configure client using Chef Solo"
-    task :solo, :roles => [:cass_cluster] do
+    task :solo, :roles => [:testvm] do
       payload_filename = 'chef_payload.tgz'
-      system "tar -zcvf #{payload_filename} chef/*"
+      system "tar -zcvf #{payload_filename} -C chef chef-solo"
       upload "./#{payload_filename}", "~/", :via => :scp
-      run "cd /etc/ && sudo chef-solo -l debug -c config/solo.rb -j config/dna.json"
-      system "rm ./#{payload_filenam}"
+      run <<-CMDS
+        sudo gem install chef ohai &&
+        mkdir -p /etc/chef && 
+        tar -zxvf #{payload_filename} -C /etc/chef &&
+        cd /etc/chef/chef-solo && 
+        sudo chef-solo -l debug -c config/solo.rb -j config/dna.json
+      CMDS
+
+      system "rm #{payload_filenam}"
     end
 
     desc "Provision (install recipes on) Chef Nodes"
