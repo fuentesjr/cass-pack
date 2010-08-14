@@ -1,1 +1,1 @@
-{ "run_list": "role[default]" }
+{ "run_list": ["recipe[cassandra]"] }

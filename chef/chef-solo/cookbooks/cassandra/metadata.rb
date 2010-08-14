@@ -4,6 +4,7 @@ license           "Apache 2.0"
 description       "Installs and configures the Cassandra distributed storage system"
 version           "0.1"
 recipe            "cassandra::autoconf", "Automatically configure nodes from chef-server information."
+recipe            "cassandra::default", "Automatically configure nodes from chef-solo information."
 recipe            "cassandra::iptables", "Automatically configure iptables rules for cassandra."
 #depends           "java"
 

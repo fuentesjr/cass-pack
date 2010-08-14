@@ -1,6 +1,55 @@
+# STRUCTURE OF THE CASSANDRA DATA BAG (meaning a databag named 'cassandra')
+# 
+#   {:id : "clusters",
+#     {<cluster name> =>
+#       {:keyspaces =>
+#         {<keyspace name> => {
+#           :columns => {<column name> => {<attrib> => <value>, ...}, ...},
+#           :replica_placement_strategy => <strategy>,
+#           :replication_factor => <factor>,
+#           :end_point_snitch => <snitch>
+#         }},
+#        <other per cluster settings>
+#       }
+#     }
+#   }
+
+example_keyspace_config = { 
+  "Keyspace1" => { 
+    "replica_placement_strategy" => "org.apache.cassandra.locator.RackUnawareStrategy",
+    "replication_factor" => 1,
+    "end_point_snitch" => "org.apache.cassandra.locator.EndPointSnitch",
+    "columns" => { 
+      "Standard1" => {
+        "CompareWith" => "BytesType"
+      },
+      "Standard2" => {
+        "CompareWith" => "UTF8Type",
+        "KeysCached" => "100%"
+      },
+      "StandardByUUID1" => {
+        "CompareWith" => "TimeUUIDType"
+      },
+      "Super1" => {
+        "ColumnType" => "Super",
+        "CompareWith" => "BytesType",
+        "CompareSubcolumnsWith" => "BytesType"
+      },
+      "Super2" => {
+        "ColumnType" => "Super",
+        "CompareWith" => "UTF8Type",
+        "CompareSubcolumnsWith" => "UTF8Type",
+        "RowsCached" => "10000",
+        "KeysCached" => "50%",
+        "Comment" => "A column family with supercolumns, whose column and subcolumn names are UTF8 strings"
+      }
+    }
+  }
+}
+
 set_unless[:cassandra][:cluster_name]  = "TestCluster"
 set_unless[:cassandra][:auto_bootstrap]  = false
-set_unless[:cassandra][:keyspaces] = {}
+set_unless[:cassandra][:keyspaces] = example_keyspace_config
 set_unless[:cassandra][:authenticator] = "org.apache.cassandra.auth.AllowAllAuthenticator"
 set_unless[:cassandra][:partitioner] = "org.apache.cassandra.dht.OrderPreservingPartitioner"
 set_unless[:cassandra][:initial_token] = ""

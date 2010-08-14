@@ -18,19 +18,43 @@
 # limitations under the License.
 #
 
-#include_recipe "java"
+include_recipe "cassandra::iptables"
+
+<<RPOFILES
+http://rpm.riptano.com/EL/5/i386/:        riptano-release-5-1.el5.noarch.rpm
+http://rpm.riptano.com/EL/5/x86_64/:      riptano-release-5-1.el5.noarch.rpm
+http://rpm.riptano.com/EL/6/i386/:        riptano-release-5-1.el6.noarch.rpm
+http://rpm.riptano.com/EL/6/x86_64/:      riptano-release-5-1.el6.noarch.rpm
+
+http://rpm.riptano.com/Fedora/12/i386/:   riptano-release-5-1.fc12.noarch.rpm
+http://rpm.riptano.com/Fedora/12/x86_64/: riptano-release-5-1.fc12.noarch.rpm
+http://rpm.riptano.com/Fedora/13/i386/:   riptano-release-5-1.fc13.noarch.rpm
+http://rpm.riptano.com/Fedora/13/x86_64/: riptano-release-5-1.fc13.noarch.rpm
+http://rpm.riptano.com/Fedora/14/i386/:   riptano-release-5-1.fc14.noarch.rpm 
+http://rpm.riptano.com/Fedora/14/x86_64/: riptano-release-5-1.fc14.noarch.rpm 
+RPOFILES
 
 case node[:platform]
 when "centos","redhat","fedora"
-  package_file = "riptano-release-5-1.el5.noarch.rpm"
-  remote_file "/tmp/#{package_file}" do
-    source "http://rpm.riptano.com/EL/5/x86_64/" + package_file
+  def get_riptano_release_info(os, base_version, architecture)
+    #TODO: see if architecture always in {i386, x86_64} [fedora might have i686]
+    repo_pkg_version = "5-1"
+    distro_dir = { "centos" => "EL", "redhat" => "EL", "fedora" => "Fedora" }[node[:platform]] 
+    rpm_filename = "riptano-release-#{repo_pkg_version}.el#{base_version}.noarch.rpm"
+    url = "http://rpm.riptano.com/#{distro_dir}/#{base_version}/#{architecture}/#{rpm_filename}"
+  end
+
+  repo_info = get_riptano_release_info(node[:platform], node[:platform_version].to_i, node[:kernel][:machine])
+  remote_file "/tmp/#{repo_info[:rpm_filename]}" do
+    source package_info[:url] 
     owner "root"
     mode 0644
   end
 
-  rpm_package "Riptano Repo" do
+  package "Riptano YUM Repo" do
+    provider Chef::Provider::Package::Rpm
     source "/tmp/#{package_file}"
+    options "--nogpgcheck"
     action :install
   end
 when "debian","ubuntu"
@@ -45,8 +69,9 @@ when "debian","ubuntu"
     notifies :run, resources("execute[apt-get update]"), :immediately
   end
 
-  execute "gpg --keyserver wwwkeys.eu.pgp.net --recv-keys F758CE318D77295D && gpg --export --armor F758CE318D77295D | sudo apt-key add -" do
-    not_if "apt-key export 'Eric Evans <eevans@apache.org>'"
+  execute "gpg --keyserver wwwkeys.eu.pgp.net --recv-keys F758CE318D77295D && gpg --export --armor F758CE318D77295D | apt-key add -" do
+    only_if "apt-key export 'Eric Evans' | grep -q 'WARNING: nothing exported'" 
+    notifies :run, resources("execute[apt-get update]"), :immediately
   end
 end
 

@@ -18,7 +18,8 @@ CHEF_SERVER = 'chef'
 role :cass_cluster, *CASSANDRA_CLUSTER 
 role :testvm, 'cke-testvm1'
 role :chef, 'chef'
-role :buntuvm, 'buntuvm'
+role :ubuntuvm, 'ubuntuvm1'
+role :centosvm, 'centosvm1'
 
 # =============================================================================
 # TASK CHAINS 
@@ -105,21 +106,39 @@ namespace :devops do
     end
 
     desc "Testing Ben's Cassandra Cookbook"
-    task :test1, :roles => [:buntuvm] do
-      chef_bin = "/var/lib/gems/1.8/bin/chef-solo"
+    task :ubuntu, :roles => [:ubuntuvm] do
       #sudo "apt-get install -y git-core ruby ruby-dev build-essential wget libopenssl-ruby rubygems"
-      #sudo "gem install --no-ri --no-rdoc chef ohai --source http://gems.opscode.com --source http://gems.rubyforge.org"
+      sudo "apt-get install -y chef"
+      push_chef_payload
+      run_chef_recipes
+    end
+
+    desc "Testing Ben's Cassandra Cookbook on CentOS"
+    task :centos, :roles => [:centosvm] do
+        #rpm -Uvh http://download.fedora.redhat.com/pub/epel/5/x86_64/epel-release-5-3.noarch.rpm &&
+        #rpm -Uvh http://download.elff.bravenet.com/5/x86_64/elff-release-5-3.noarch.rpm &&
+      run <<-CMDS
+        yum install -y chef
+      CMDS
+      push_chef_payload
+      run_chef_recipes
+    end
+
+    def push_chef_payload 
+      payload_filename = 'chef_payload.tgz'
+      system "tar -zcvf #{payload_filename} -C chef chef-solo"
+      upload "./#{payload_filename}", "~/", :via => :scp
       sudo "rm -rf /etc/chef"
       sudo "mkdir -p /etc/chef"
-      sudo "git clone git://github.com/fuentesjr/chef-101.git /etc/chef" do |channel, stream, data|
-        #channel.send_data("yes\n")
-      end
-      #sudo "echo 'export PATH=/var/lib/gems/1.8/bin:$PATH' | sudo tee -a  /etc/bash.bashrc"
-      #sudo "export PATH=/var/lib/gems/1.8/bin:$PATH"
-      chef_path = "/etc/chef"
-      #sudo "chef-solo --help", :shell => "/bin/bash", :env => {"PATH" => "/var/lib/gems/1.8/bin:$PATH"}
-      #sudo "#{chef_bin} --help", :shell => "/bin/bash", :env => {"PATH" => "/var/lib/gems/1.8/bin:$PATH"}
-      sudo "#{chef_bin} -l debug -c #{chef_path}/config/solo.rb -j #{chef_path}/config/dna.json"
+      sudo "tar -zxvf #{payload_filename} -C /etc/chef"
+      system "rm #{payload_filename}"
+    end
+
+    def run_chef_recipes
+      run <<-CMDS
+        cd /etc/chef/chef-solo && 
+        sudo chef-solo -l debug -c config/solo.rb -j config/dna.json
+      CMDS
     end
 
     desc "Configure client using Chef Solo"
