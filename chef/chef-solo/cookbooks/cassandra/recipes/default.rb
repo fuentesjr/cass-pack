@@ -41,7 +41,7 @@ when "centos","redhat","fedora"
     source "/tmp/#{repo_pkg_info[:filename]}"
     options "--nogpgcheck"
     action :install
-    notifies :run, resources("ruby_block[refresh_yum_cache]"), :immediately
+    notifies :create, resources("ruby_block[refresh_yum_cache]"), :immediately
   end
 when "debian","ubuntu"
   execute "apt-get update" do
