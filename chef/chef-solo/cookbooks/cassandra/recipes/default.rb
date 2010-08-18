@@ -26,7 +26,7 @@ when "centos","redhat","fedora"
     block do
       Chef::Provider::Package::Yum::YumCache.instance.refresh 
     end
-    action :create
+    action :nothing
   end
 
   repo_pkg_info = CassandraHelper::get_riptano_repo_pkg_info(node[:platform], node[:platform_version].to_i, node[:kernel][:machine])
@@ -64,6 +64,7 @@ end
 package "cassandra" do
   action :install
 end
+
 
 service "cassandra" do
   supports :status => true, :restart => true, :reload => true
