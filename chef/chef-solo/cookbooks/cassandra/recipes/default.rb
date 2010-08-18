@@ -22,6 +22,10 @@ include_recipe "cassandra::iptables"
 
 case node[:platform]
 when "centos","redhat","fedora"
+  execute "yum clean all" do
+    action :nothing
+  end
+
   repo_pkg_info = CassandraHelper::get_riptano_repo_pkg_info(node[:platform], node[:platform_version].to_i, node[:kernel][:machine])
   remote_file "/tmp/#{repo_pkg_info[:filename]}" do
     source repo_pkg_info[:url] 
@@ -34,6 +38,7 @@ when "centos","redhat","fedora"
     source "/tmp/#{repo_pkg_info[:filename]}"
     options "--nogpgcheck"
     action :install
+    notifies :run, resources("execute[yum clean all]"), :immediately
   end
 when "debian","ubuntu"
   execute "apt-get update" do
