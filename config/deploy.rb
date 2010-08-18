@@ -1,6 +1,5 @@
 default_run_options[:pty] = true 
 ssh_options[:compression] = "none"
-#set :user, "root"
 set :pub_key_filename, "id_rsa.pub"
 CASSANDRA_CLUSTER = ['cass1', 'cass2', 'cass3', 'cass4']
 CHEF_SERVER = 'chef'
@@ -96,7 +95,8 @@ namespace :devops do
 
   namespace :chef do
     desc "Testing ssh keys"
-    task :cp_keys, :roles => [:buntuvm] do
+    task :cp_keys, :roles => [:centosvm] do
+      set :user, "root"
       upload File.expand_path("~/.ssh/#{pub_key_filename}"), "~/", :via => :scp
       run <<-CMDS
         mkdir -p ~/.ssh/ && chmod 700 ~/.ssh &&
@@ -115,9 +115,10 @@ namespace :devops do
 
     desc "Testing Ben's Cassandra Cookbook on CentOS"
     task :centos, :roles => [:centosvm] do
-        #rpm -Uvh http://download.fedora.redhat.com/pub/epel/5/x86_64/epel-release-5-3.noarch.rpm &&
-        #rpm -Uvh http://download.elff.bravenet.com/5/x86_64/elff-release-5-3.noarch.rpm &&
+      set :user, "root"
       run <<-CMDS
+        rpm -Uvh http://download.fedora.redhat.com/pub/epel/5/x86_64/epel-release-5-3.noarch.rpm &&
+        rpm -Uvh http://download.elff.bravenet.com/5/x86_64/elff-release-5-3.noarch.rpm &&
         yum install -y chef
       CMDS
       push_chef_payload

@@ -20,40 +20,18 @@
 
 include_recipe "cassandra::iptables"
 
-<<RPOFILES
-http://rpm.riptano.com/EL/5/i386/:        riptano-release-5-1.el5.noarch.rpm
-http://rpm.riptano.com/EL/5/x86_64/:      riptano-release-5-1.el5.noarch.rpm
-http://rpm.riptano.com/EL/6/i386/:        riptano-release-5-1.el6.noarch.rpm
-http://rpm.riptano.com/EL/6/x86_64/:      riptano-release-5-1.el6.noarch.rpm
-
-http://rpm.riptano.com/Fedora/12/i386/:   riptano-release-5-1.fc12.noarch.rpm
-http://rpm.riptano.com/Fedora/12/x86_64/: riptano-release-5-1.fc12.noarch.rpm
-http://rpm.riptano.com/Fedora/13/i386/:   riptano-release-5-1.fc13.noarch.rpm
-http://rpm.riptano.com/Fedora/13/x86_64/: riptano-release-5-1.fc13.noarch.rpm
-http://rpm.riptano.com/Fedora/14/i386/:   riptano-release-5-1.fc14.noarch.rpm 
-http://rpm.riptano.com/Fedora/14/x86_64/: riptano-release-5-1.fc14.noarch.rpm 
-RPOFILES
-
 case node[:platform]
 when "centos","redhat","fedora"
-  def get_riptano_release_info(os, base_version, architecture)
-    #TODO: see if architecture always in {i386, x86_64} [fedora might have i686]
-    repo_pkg_version = "5-1"
-    distro_dir = { "centos" => "EL", "redhat" => "EL", "fedora" => "Fedora" }[node[:platform]] 
-    rpm_filename = "riptano-release-#{repo_pkg_version}.el#{base_version}.noarch.rpm"
-    url = "http://rpm.riptano.com/#{distro_dir}/#{base_version}/#{architecture}/#{rpm_filename}"
-  end
-
-  repo_info = get_riptano_release_info(node[:platform], node[:platform_version].to_i, node[:kernel][:machine])
-  remote_file "/tmp/#{repo_info[:rpm_filename]}" do
-    source package_info[:url] 
+  repo_pkg_info = CassandraHelper::get_riptano_repo_pkg_info(node[:platform], node[:platform_version].to_i, node[:kernel][:machine])
+  remote_file "/tmp/#{repo_pkg_info[:filename]}" do
+    source repo_pkg_info[:url] 
     owner "root"
     mode 0644
   end
 
   package "Riptano YUM Repo" do
     provider Chef::Provider::Package::Rpm
-    source "/tmp/#{package_file}"
+    source "/tmp/#{repo_pkg_info[:filename]}"
     options "--nogpgcheck"
     action :install
   end
