@@ -24,7 +24,7 @@ case node[:platform]
 when "centos","redhat","fedora"
   ruby_block "refresh_yum_cache" do
     block do
-      Chef::Provider::Package::Yum::YumCache.instance.refresh 
+      Chef::Provider::Package::Yum::YumCache.instance.flush
     end
     action :nothing
   end
