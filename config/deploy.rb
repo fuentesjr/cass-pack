@@ -1,12 +1,12 @@
 default_run_options[:pty] = true 
 ssh_options[:compression] = "none"
-set :user, 'root'
+set :platform, 'centos'
 set :pub_key_filename, "id_rsa.pub"
-CASSANDRA_CLUSTER = ['cass1', 'cass2', 'cass3', 'cass4']
 CHEF_SERVER = 'chef'
+CASSANDRA_CLUSTER = ['cass1', 'cass2', 'cass3', 'cass4']
 
-if ARGV[0] == 'clear'
-  unset :user
+if ['centos', 'redhat', 'fedora'].include?(platform)
+  set :user, 'root'
 end
 
 # =============================================================================
@@ -21,7 +21,6 @@ end
 #role :cluster, 'cass1', 'cass2', 'cass3', 'cass4'
 role :cass_cluster, *CASSANDRA_CLUSTER 
 role :cass_seeds, 'cass1', 'cass2' 
-role :chef, 'chef'
 
 server 'chef', :chef
 server 'ubuntuvm1', :ubuntuvm
@@ -30,7 +29,8 @@ server 'centosvm1', :centosvm
 # =============================================================================
 # TASK CHAINS 
 # =============================================================================
-#before "devops:install_chef", "devops:copy_ssh_keys"
+before "devops:chef:install", "devops:copy_ssh_keys"
+after "devops:chef:install", "devops:chef:deploy"
 
 # =============================================================================
 # TASKS
@@ -107,37 +107,44 @@ namespace :devops do
     CMDS
   end
 
-  desc "Testing ssh keys"
-  task :cp_keys, :hosts => :ubuntuvm do
-    upload File.expand_path("~/.ssh/#{pub_key_filename}"), "~/", :via => :scp
-    run <<-CMDS
-      mkdir -p ~/.ssh/ && chmod 700 ~/.ssh &&
-      cat ~/#{pub_key_filename} >> ~/.ssh/authorized_keys &&
-      rm -f ~/#{pub_key_filename}
-    CMDS
-  end
-
   desc "Run nodetool ring on seeds"
   task :ring, :roles => [:cass_seeds] do
     run "nodetool -h localhost ring"
   end
 
+  namespace :test do
+    desc "Testing ssh keys"
+    task :cp_keys, :hosts => :ubuntuvm do
+      upload File.expand_path("~/.ssh/#{pub_key_filename}"), "~/", :via => :scp
+      run <<-CMDS
+        mkdir -p ~/.ssh/ && chmod 700 ~/.ssh &&
+        cat ~/#{pub_key_filename} >> ~/.ssh/authorized_keys &&
+        rm -f ~/#{pub_key_filename}
+      CMDS
+    end
+  end
+
   namespace :chef do
-    desc "Testing Ben's Cassandra Cookbook"
-    task :ubuntu, :hosts => :ubuntuvm do
-      #sudo "apt-get install -y git-core ruby ruby-dev build-essential wget libopenssl-ruby rubygems"
-      sudo "apt-get install -y chef"
-      push_chef_payload
-      run_chef_recipes
+    desc "Install Chef on soon to be Cassandra nodes"
+    task :install, :roles => [:cass_cluster] do
+      case platform
+        when 'centos','redhat','fedora'
+          run <<-CMDS
+            rpm -Uvh --force http://download.fedora.redhat.com/pub/epel/5/x86_64/epel-release-5-3.noarch.rpm &&
+            rpm -Uvh --force http://download.elff.bravenet.com/5/x86_64/elff-release-5-3.noarch.rpm &&
+            yum install -y chef
+          CMDS
+        when 'debian','ubuntu'
+          #sudo "apt-get install -y git-core ruby ruby-dev build-essential wget libopenssl-ruby rubygems"
+          sudo "apt-get install -y chef"
+        else
+          "OS Type Unknown"
+          exit(-1)
+      end
     end
 
-    desc "Testing Ben's Cassandra Cookbook on CentOS"
-    task :centos, :roles => [:cass_cluster] do
-      run <<-CMDS
-        rpm -Uvh --force http://download.fedora.redhat.com/pub/epel/5/x86_64/epel-release-5-3.noarch.rpm &&
-        rpm -Uvh --force http://download.elff.bravenet.com/5/x86_64/elff-release-5-3.noarch.rpm &&
-        yum install -y chef
-      CMDS
+    desc "Deploy Cassandra Cluster via chef-solo"
+    task :deploy, :roles => [:cass_cluster] do
       push_chef_payload
       run_chef_recipes(:cluster)
     end
