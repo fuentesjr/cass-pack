@@ -1,1 +1,1 @@
-{ "cassandra": { "seeds": ["cass1", "cass2"] }, "run_list": ["recipe[cassandra]"] }
+{ "cassandra": { "seeds": ["192.168.123.201", "192.168.123.202"] }, "run_list": ["recipe[cassandra]"] }
