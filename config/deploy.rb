@@ -155,8 +155,8 @@ namespace :devops do
       CMDS
     end
 
-    desc "Configure Chef Client on Nodes"
-    task :prep_nodes, :roles => [:cass_cluster] do
+    desc "Configure chef-client on nodes"
+    task :prep_clients, :roles => [:cass_cluster] do
       # See http://wiki.opscode.com/display/chef/Hello+World+example 
       run <<-CMDS
         rpm -Uvh http://download.fedora.redhat.com/pub/epel/5/x86_64/epel-release-5-3.noarch.rpm &&
@@ -175,8 +175,8 @@ namespace :devops do
       puts "Done!"
     end
 
-    desc "Configure Chef Server"
-    task :config_server, :hosts => :chef do
+    desc "Configure chef-server"
+    task :prep_server, :hosts => :chef do
       # See the following links for info:
       # http://wiki.opscode.com/display/chef/Hello+World+example 
       # http://wiki.opscode.com/display/chef/Installation+on+RHEL+and+CentOS+5+with+RPMs
