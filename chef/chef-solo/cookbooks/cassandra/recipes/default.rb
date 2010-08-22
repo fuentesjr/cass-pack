@@ -56,7 +56,7 @@ when "debian","ubuntu"
   end
 
   execute "gpg --keyserver wwwkeys.eu.pgp.net --recv-keys F758CE318D77295D && gpg --export --armor F758CE318D77295D | apt-key add -" do
-    only_if "apt-key export 'Eric Evans' | grep -q 'WARNING: nothing exported'" 
+    not_if "apt-key export 'Eric Evans' | grep -vq 'WARNING: nothing exported'" 
     notifies :run, resources("execute[apt-get update]"), :immediately
   end
 end
@@ -64,7 +64,6 @@ end
 package "cassandra" do
   action :install
 end
-
 
 service "cassandra" do
   supports :status => true, :restart => true, :reload => true
