@@ -1,9 +1,13 @@
 default_run_options[:pty] = true 
 ssh_options[:compression] = "none"
-#set :user, "root" #TODO: Deal with CentOS and Ubuntu default user accounts
+set :user, 'root'
 set :pub_key_filename, "id_rsa.pub"
 CASSANDRA_CLUSTER = ['cass1', 'cass2', 'cass3', 'cass4']
 CHEF_SERVER = 'chef'
+
+if ARGV[0] == 'clear'
+  unset :user
+end
 
 # =============================================================================
 # ROLES
@@ -16,15 +20,17 @@ CHEF_SERVER = 'chef'
 
 #role :cluster, 'cass1', 'cass2', 'cass3', 'cass4'
 role :cass_cluster, *CASSANDRA_CLUSTER 
-role :testvm, 'cke-testvm1'
+role :cass_seeds, 'cass1', 'cass2' 
 role :chef, 'chef'
-role :ubuntuvm, 'ubuntuvm1'
-role :centosvm, 'centosvm1'
+
+server 'chef', :chef
+server 'ubuntuvm1', :ubuntuvm
+server 'centosvm1', :centosvm
 
 # =============================================================================
 # TASK CHAINS 
 # =============================================================================
-before "devops:install_chef", "devops:copy_ssh_keys"
+#before "devops:install_chef", "devops:copy_ssh_keys"
 
 # =============================================================================
 # TASKS
@@ -58,18 +64,40 @@ before "devops:install_chef", "devops:copy_ssh_keys"
 #   are treated as local variables, which are made available to the (ERb)
 #   template.
 
+def serially(&block)
+  original = ENV['HOSTS']
+  find_servers.each do |server|
+    ENV['HOSTS'] = server.host
+    yield
+  end
+ensure
+  ENV['HOSTS'] = original
+end
+
 namespace :devops do
   desc "Report uptime on all servers"
   task :default do
     run "uptime"
   end
 
-  desc "Shutdown cassandra cluster"
+  desc "Shutdown Cassandra cluster"
   task :shutdown, :roles => [:cass_cluster] do
     run "shutdown -h now"
   end
 
-  desc "Copy ssh keys to servers for passwordless entry"
+  desc "Reset firewall on all Cassandra nodes"
+  task :fwreset, :roles => [:cass_cluster] do
+    run "/sbin/iptables -F"
+  end
+
+  desc "Rolling restart on the Cassandra cluster"
+  task :rollrestart, :roles => [:cass_cluster] do
+    serially do
+      run "/etc/init.d/cassandra restart"
+    end
+  end
+
+  desc "Copy ssh keys to Cassandra nodes for passwordless entry"
   task :copy_ssh_keys, :roles => [:cass_cluster] do
     upload File.expand_path("~/.ssh/#{pub_key_filename}"), "~/", :via => :scp
     run <<-CMDS
@@ -79,40 +107,24 @@ namespace :devops do
     CMDS
   end
 
-  desc "Install Chef gem on clients"
-  task :install_chef, :roles => [:cass_cluster] do
-    puts "gem install chef ohai"
-  end
-
-  desc "Install Riptano Repo"
-  task :install_riptano_repo, :roles => [:cass_cluster] do
-    repo_file = "riptano-release-5-1.el5.noarch.rpm"
+  desc "Testing ssh keys"
+  task :cp_keys, :hosts => :ubuntuvm do
+    upload File.expand_path("~/.ssh/#{pub_key_filename}"), "~/", :via => :scp
     run <<-CMDS
-      wget http://rpm.riptano.com/EL/5/x86_64/#{repo_file} &&
-      rpm -ivh #{repo_file}
+      mkdir -p ~/.ssh/ && chmod 700 ~/.ssh &&
+      cat ~/#{pub_key_filename} >> ~/.ssh/authorized_keys &&
+      rm -f ~/#{pub_key_filename}
     CMDS
-    #run "yum install cassandra && chkconfig cassandra on"
   end
 
-  desc "Provision all servers"
-  task :provision_all, :roles => [:cass_cluster] do
-    puts "TBD"
+  desc "Run nodetool ring on seeds"
+  task :ring, :roles => [:cass_seeds] do
+    run "nodetool -h localhost ring"
   end
 
   namespace :chef do
-    desc "Testing ssh keys"
-    task :cp_keys, :roles => [:ubuntuvm] do
-      #set :user, "root"
-      upload File.expand_path("~/.ssh/#{pub_key_filename}"), "~/", :via => :scp
-      run <<-CMDS
-        mkdir -p ~/.ssh/ && chmod 700 ~/.ssh &&
-        cat ~/#{pub_key_filename} >> ~/.ssh/authorized_keys &&
-        rm -f ~/#{pub_key_filename}
-      CMDS
-    end
-
     desc "Testing Ben's Cassandra Cookbook"
-    task :ubuntu, :roles => [:ubuntuvm] do
+    task :ubuntu, :hosts => :ubuntuvm do
       #sudo "apt-get install -y git-core ruby ruby-dev build-essential wget libopenssl-ruby rubygems"
       sudo "apt-get install -y chef"
       push_chef_payload
@@ -120,15 +132,14 @@ namespace :devops do
     end
 
     desc "Testing Ben's Cassandra Cookbook on CentOS"
-    task :centos, :roles => [:centosvm] do
-      set :user, "root"
+    task :centos, :roles => [:cass_cluster] do
       run <<-CMDS
-        rpm -Uvh http://download.fedora.redhat.com/pub/epel/5/x86_64/epel-release-5-3.noarch.rpm &&
-        rpm -Uvh http://download.elff.bravenet.com/5/x86_64/elff-release-5-3.noarch.rpm &&
+        rpm -Uvh --force http://download.fedora.redhat.com/pub/epel/5/x86_64/epel-release-5-3.noarch.rpm &&
+        rpm -Uvh --force http://download.elff.bravenet.com/5/x86_64/elff-release-5-3.noarch.rpm &&
         yum install -y chef
       CMDS
       push_chef_payload
-      run_chef_recipes
+      run_chef_recipes(:cluster)
     end
 
     def push_chef_payload 
@@ -141,32 +152,12 @@ namespace :devops do
       system "rm #{payload_filename}"
     end
 
-    def run_chef_recipes
+    def run_chef_recipes(config = :standalone)
+      dna_config = { :standalone => "dna.json", :cluster => "dna_cluster.json" }[config]
       run <<-CMDS
         cd /etc/chef/chef-solo && 
-        sudo chef-solo -l debug -c config/solo.rb -j config/dna.json
+        sudo chef-solo -l debug -c config/solo.rb -j config/#{dna_config}
       CMDS
-    end
-
-    desc "Configure client using Chef Solo"
-    task :solo, :roles => [:testvm] do
-      payload_filename = 'chef_payload.tgz'
-      system "tar -zcvf #{payload_filename} -C chef chef-solo"
-      upload "./#{payload_filename}", "~/", :via => :scp
-      run <<-CMDS
-        sudo gem install chef ohai &&
-        mkdir -p /etc/chef && 
-        tar -zxvf #{payload_filename} -C /etc/chef &&
-        cd /etc/chef/chef-solo && 
-        sudo chef-solo -l debug -c config/solo.rb -j config/dna.json
-      CMDS
-
-      system "rm #{payload_filenam}"
-    end
-
-    desc "Provision (install recipes on) Chef Nodes"
-    task :provision_nodes, :roles => [:cass_cluster] do
-      run "chef-client"
     end
 
     desc "Configure Chef Client on Nodes"
@@ -190,7 +181,7 @@ namespace :devops do
     end
 
     desc "Configure Chef Server"
-    task :config_server, :roles => [:chef] do
+    task :config_server, :hosts => :chef do
       # See the following links for info:
       # http://wiki.opscode.com/display/chef/Hello+World+example 
       # http://wiki.opscode.com/display/chef/Installation+on+RHEL+and+CentOS+5+with+RPMs
