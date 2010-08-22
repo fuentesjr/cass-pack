@@ -112,18 +112,6 @@ namespace :devops do
     run "nodetool -h localhost ring"
   end
 
-  namespace :test do
-    desc "Testing ssh keys"
-    task :cp_keys, :hosts => :ubuntuvm do
-      upload File.expand_path("~/.ssh/#{pub_key_filename}"), "~/", :via => :scp
-      run <<-CMDS
-        mkdir -p ~/.ssh/ && chmod 700 ~/.ssh &&
-        cat ~/#{pub_key_filename} >> ~/.ssh/authorized_keys &&
-        rm -f ~/#{pub_key_filename}
-      CMDS
-    end
-  end
-
   namespace :chef do
     desc "Install Chef on soon to be Cassandra nodes"
     task :install, :roles => [:cass_cluster] do
