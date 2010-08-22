@@ -1,5 +1,6 @@
 default_run_options[:pty] = true 
 ssh_options[:compression] = "none"
+#set :user, "root" #TODO: Deal with CentOS and Ubuntu default user accounts
 set :pub_key_filename, "id_rsa.pub"
 CASSANDRA_CLUSTER = ['cass1', 'cass2', 'cass3', 'cass4']
 CHEF_SERVER = 'chef'
@@ -63,6 +64,11 @@ namespace :devops do
     run "uptime"
   end
 
+  desc "Shutdown cassandra cluster"
+  task :shutdown, :roles => [:cass_cluster] do
+    run "shutdown -h now"
+  end
+
   desc "Copy ssh keys to servers for passwordless entry"
   task :copy_ssh_keys, :roles => [:cass_cluster] do
     upload File.expand_path("~/.ssh/#{pub_key_filename}"), "~/", :via => :scp
@@ -95,8 +101,8 @@ namespace :devops do
 
   namespace :chef do
     desc "Testing ssh keys"
-    task :cp_keys, :roles => [:centosvm] do
-      set :user, "root"
+    task :cp_keys, :roles => [:ubuntuvm] do
+      #set :user, "root"
       upload File.expand_path("~/.ssh/#{pub_key_filename}"), "~/", :via => :scp
       run <<-CMDS
         mkdir -p ~/.ssh/ && chmod 700 ~/.ssh &&
