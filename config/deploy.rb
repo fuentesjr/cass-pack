@@ -93,7 +93,7 @@ namespace :devops do
   desc "Rolling restart on the Cassandra cluster"
   task :rollrestart, :roles => [:cass_cluster] do
     serially do
-      run "/etc/init.d/cassandra restart"
+      run "/etc/init.d/cassandra restart && sleep 3"
     end
   end
 
