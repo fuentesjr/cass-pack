@@ -18,14 +18,14 @@
 # limitations under the License.
 #
 
+include_recipe "cassandra::iptables"
+
 #BUG: node[:ipaddress] always empty (bug in chef-solo?)
 #node_ip_addr = node[:ipaddress]
 node_ip_addr = %x(/sbin/ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}').gsub(/\n/, '')
 
 node[:cassandra][:listen_addr] = node_ip_addr 
 node[:cassandra][:thrift_addr] = node_ip_addr 
-
-include_recipe "cassandra::iptables"
 
 case node[:platform]
 when "centos","redhat","fedora"
