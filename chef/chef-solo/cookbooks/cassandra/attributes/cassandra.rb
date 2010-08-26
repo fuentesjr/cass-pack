@@ -17,31 +17,31 @@
 example_keyspace_config = { 
   "Keyspace1" => { 
     "replica_placement_strategy" => "org.apache.cassandra.locator.RackUnawareStrategy",
-    "replication_factor" => 1,
+    "replication_factor" => 3,
     "end_point_snitch" => "org.apache.cassandra.locator.EndPointSnitch",
     "columns" => { 
       "Standard1" => {
-        "CompareWith" => "BytesType"
+        "compare_with" => "BytesType"
       },
       "Standard2" => {
-        "CompareWith" => "UTF8Type",
-        "KeysCached" => "100%"
+        "compare_with" => "UTF8Type",
+        "keys_cached" => "100%"
       },
       "StandardByUUID1" => {
-        "CompareWith" => "TimeUUIDType"
+        "compare_with" => "TimeUUIDType"
       },
       "Super1" => {
-        "ColumnType" => "Super",
-        "CompareWith" => "BytesType",
-        "CompareSubcolumnsWith" => "BytesType"
+        "column_type" => "Super",
+        "compare_with" => "BytesType",
+        "compare_subcolumns_with" => "BytesType"
       },
       "Super2" => {
-        "ColumnType" => "Super",
-        "CompareWith" => "UTF8Type",
-        "CompareSubcolumnsWith" => "UTF8Type",
-        "RowsCached" => "10000",
-        "KeysCached" => "50%",
-        "Comment" => "A column family with supercolumns, whose column and subcolumn names are UTF8 strings"
+        "column_type" => "Super",
+        "compare_with" => "UTF8Type",
+        "compare_subcolumns_with" => "UTF8Type",
+        "rows_cached" => "10000",
+        "keys_cached" => "50%",
+        "comment" => "A column family with supercolumns, whose column and subcolumn names are UTF8 strings"
       }
     }
   }
@@ -51,7 +51,7 @@ default.cassandra.cluster_name  = "TestCluster"
 default.cassandra.auto_bootstrap  = false
 default.cassandra.keyspaces = example_keyspace_config
 default.cassandra.authenticator = "org.apache.cassandra.auth.AllowAllAuthenticator"
-default.cassandra.partitioner = "org.apache.cassandra.dht.OrderPreservingPartitioner"
+default.cassandra.partitioner = "org.apache.cassandra.dht.OrderPreservingPartitioner" # "org.apache.cassandra.dht.RandomPartitioner"
 default.cassandra.initial_token = ""
 default.cassandra.commit_log_dir = "/var/lib/cassandra/commitlog"
 default.cassandra.data_file_dirs = ["/var/lib/cassandra/data"]
