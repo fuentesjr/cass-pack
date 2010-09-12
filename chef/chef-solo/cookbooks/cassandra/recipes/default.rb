@@ -44,7 +44,6 @@ when "centos","redhat","fedora"
   end
 
   package "Riptano YUM Repo" do
-    provider Chef::Provider::Package::Rpm
     source "/tmp/#{repo_pkg_info[:filename]}"
     options "--nogpgcheck"
     action :install
