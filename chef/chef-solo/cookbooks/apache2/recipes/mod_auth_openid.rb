@@ -17,43 +17,48 @@
 # limitations under the License.
 #
 
-%w{ apache2-prefork-dev libopkele-dev libopkele3 }.each do |pkg|
-  package pkg
-end
+case node[:platform]
+when "centos", "redhat", "fedora"
 
-remote_file "/tmp/mod_auth_openid-0.4.tar.gz" do
-  source "http://butterfat.net/releases/mod_auth_openid/mod_auth_openid-0.4.tar.gz"
-  mode 0644
-end
+when "debian", "ubuntu"
+  %w{ apache2-prefork-dev libopkele-dev libopkele3 }.each do |pkg|
+    package pkg
+  end
 
-bash "install mod_auth_openid" do
-  cwd "/tmp"
-  code <<-EOH
-  tar zxvf mod_auth_openid-0.4.tar.gz
-  cd mod_auth_openid-0.4 && ./configure
-  perl -pi -e "s/-i -a -n 'authopenid'/-i -n 'authopenid'/g" Makefile
-  make && make install
-  EOH
-  not_if { File.exists?("/usr/lib/apache2/modules/mod_auth_openid.so") }
-end
+  remote_file "/tmp/mod_auth_openid-0.4.tar.gz" do
+    source "http://butterfat.net/releases/mod_auth_openid/mod_auth_openid-0.4.tar.gz"
+    mode 0644
+  end
 
-file "/var/cache/apache2/mod_auth_openid.db" do
-  owner node[:apache][:user]
-  mode 0600
-end
+  bash "install mod_auth_openid" do
+    cwd "/tmp"
+    code <<-EOH
+    tar zxvf mod_auth_openid-0.4.tar.gz
+    cd mod_auth_openid-0.4 && ./configure
+    perl -pi -e "s/-i -a -n 'authopenid'/-i -n 'authopenid'/g" Makefile
+    make && make install
+    EOH
+    not_if { File.exists?("/usr/lib/apache2/modules/mod_auth_openid.so") }
+  end
 
-template "#{node[:apache][:dir]}/mods-available/authopenid.load" do
-  source "mods/authopenid.load.erb"
-  owner "root"
-  group "root"
-  mode 0644
-end
+  file "/var/cache/apache2/mod_auth_openid.db" do
+    owner node[:apache][:user]
+    mode 0600
+  end
 
-apache_module "authopenid"
+  template "#{node[:apache][:dir]}/mods-available/authopenid.load" do
+    source "mods/authopenid.load.erb"
+    owner "root"
+    group "root"
+    mode 0644
+  end
 
-template "/usr/local/bin/mod_auth_openid.rb" do
-  source "mod_auth_openid.rb.erb"
-  owner node[:apache][:user]
-  group node[:apache][:user]
-  mode 0750
+  apache_module "authopenid"
+
+  template "/usr/local/bin/mod_auth_openid.rb" do
+    source "mod_auth_openid.rb.erb"
+    owner node[:apache][:user]
+    group node[:apache][:user]
+    mode 0750
+  end
 end
