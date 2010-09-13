@@ -118,6 +118,8 @@ namespace :devops do
       case platform
         when 'centos','redhat','fedora'
           run <<-CMDS
+            setenforce 0 &&
+            sed -i'' -e 's/SELINUX=enforcing/SELINUX=disabled/' /etc/sysconfig/selinux &&
             rpm -Uvh --force http://download.fedora.redhat.com/pub/epel/5/x86_64/epel-release-5-4.noarch.rpm &&
             rpm -Uvh --force http://download.elff.bravenet.com/5/x86_64/elff-release-5-3.noarch.rpm &&
             yum install -y chef
