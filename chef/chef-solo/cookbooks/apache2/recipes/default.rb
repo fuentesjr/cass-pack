@@ -191,3 +191,5 @@ include_recipe "apache2::mod_log_config" if platform?("centos", "redhat", "suse"
 service "apache2" do
   action :start
 end
+
+include_recipe "apache2::iptables"
