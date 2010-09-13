@@ -20,6 +20,7 @@
 include_recipe "apache2"
 include_recipe "apache2::mod_auth_openid"
 include_recipe "apache2::mod_rewrite"
+include_recipe "apache2::mod_expires"
 include_recipe "munin::client"
 
 package "munin"
@@ -32,7 +33,8 @@ cookbook_file "/etc/cron.d/munin" do
   backup 0
 end
 
-munin_servers = search(:node, "hostname:[* TO *] AND role:#{node[:app_environment]}")
+#munin_servers = search(:node, "hostname:[* TO *] AND role:#{node[:app_environment]}")
+munin_clients = node[:munin][:clients] 
 
 if node[:public_domain]
   case node[:app_environment]
@@ -48,7 +50,12 @@ end
 template "/etc/munin/munin.conf" do
   source "munin.conf.erb"
   mode 0644
-  variables(:munin_nodes => munin_servers)
+  case node[:platform]
+  when "centos","redhat","fedora","suse"
+    variables(:doc_root => "/var/www/html", :munin_nodes => munin_clients)
+  when "debian","ubuntu"
+    variables(:doc_root => "/var/www", :munin_nodes => munin_clients)
+  end
 end
 
 apache_site "000-default" do
@@ -58,10 +65,23 @@ end
 template "#{node[:apache][:dir]}/sites-available/munin.conf" do
   source "apache2.conf.erb"
   mode 0644
-  variables :public_domain => public_domain
+  case node[:platform]
+  when "centos","redhat","fedora","suse"
+    variables :doc_root => "/var/www/html", :public_domain => public_domain
+  when "debian","ubuntu"
+    variables :doc_root => "/var/www", :public_domain => public_domain
+  end
   if File.symlink?("#{node[:apache][:dir]}/sites-enabled/munin.conf")
     notifies :reload, resources(:service => "apache2")
   end
 end
 
 apache_site "munin.conf"
+
+cookbook_file "/etc/munin/munin-htpasswd" do
+  cookbook "munin"
+  source "htpasswd.users"
+  owner "root"
+  group "root"
+  mode 0644
+end

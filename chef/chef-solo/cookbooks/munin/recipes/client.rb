@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+include_recipe "munin::iptables"
 
 package "munin-node"
 
@@ -24,7 +25,8 @@ service "munin-node" do
   action :enable
 end
 
-munin_servers = search(:node, "role:monitoring")
+#munin_servers = search(:node, "role:monitoring")
+munin_servers = node[:munin][:servers]
 
 template "/etc/munin/munin-node.conf" do
   source "munin-node.conf.erb"
@@ -32,3 +34,4 @@ template "/etc/munin/munin-node.conf" do
   variables :munin_servers => munin_servers
   notifies :restart, resources(:service => "munin-node")
 end
+

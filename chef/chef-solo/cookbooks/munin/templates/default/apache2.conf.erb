@@ -1,18 +1,18 @@
 <VirtualHost *:80>
   ServerAdmin     ops@example.com
   ServerName      <%= node[:fqdn] %>
-	ServerAlias     munin munin.<%= node[:app_environment] %>.<%= @public_domain %>
-  DocumentRoot    /var/www/munin
+  ServerAlias     munin munin.<%= node[:app_environment] %>.<%= @public_domain %>
+  DocumentRoot    <%= "#{@doc_root}/munin" %>
   CustomLog       <%= node[:apache][:log_dir] %>/munin_access.log combined
   ErrorLog        <%= node[:apache][:log_dir] %>/munin_error.log
 
-  Alias /munin /var/www/munin
+  Alias /munin <%= "#{@doc_root}/munin" %>
 
   <Location />
     AuthName "Munin Server"
     AuthOpenIDEnabled On
     AuthOpenIDDBLocation /var/cache/apache2/mod_auth_openid.db
-    AuthOpenIDUserProgram /usr/local/bin/mod_auth_openid.rb
+    #AuthOpenIDUserProgram /usr/local/bin/mod_auth_openid.rb
   </Location>
 
   RewriteEngine On

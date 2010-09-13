@@ -1,7 +1,7 @@
 maintainer        "Opscode, Inc."
 maintainer_email  "cookbooks@opscode.com"
 license           "Apache 2.0"
-description       "Instsalls and configures munin"
+description       "Installs and configures munin"
 version           "0.9.1"
 
 depends "apache2"
