@@ -1,1 +1,15 @@
-{ "cassandra": { "seeds": ["192.168.123.201", "192.168.123.202"] }, "run_list": ["recipe[cassandra]"] }
+{ 
+  "munin": {
+    "servers": [{ "ipaddress":"192.168.123.201" }],
+    "clients": [
+      { "hostname": "cass1.72andsunny.lan", "ipaddress":"192.168.123.201" },
+      { "hostname": "cass2.72andsunny.lan", "ipaddress":"192.168.123.202" },
+      { "hostname": "cass3.72andsunny.lan", "ipaddress":"192.168.123.203" },
+      { "hostname": "cass4.72andsunny.lan", "ipaddress":"192.168.123.204" }
+    ]
+  },
+  "cassandra": { 
+    "seeds": ["192.168.123.201", "192.168.123.202"]
+  }, 
+  "run_list": ["recipe[cassandra]"]
+}
