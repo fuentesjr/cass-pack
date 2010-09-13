@@ -6,11 +6,13 @@ version           "0.1"
 #recipe            "cassandra::autoconf", "Automatically configure nodes from chef-server information."
 recipe            "cassandra::default", "Automatically configure nodes from chef-solo information."
 recipe            "cassandra::iptables", "Automatically configure iptables rules for cassandra."
-#depends           "java"
+recipe            "cassandra::munin", "Automatically configure munin node for cassandra monitoring data."
 
 %w{redhat centos ubuntu debian}.each do |os|
   supports os
   depends           "iptables"
+  depends           "munin"
+  #depends           "java"
 end
 
 attribute "cassandra",
