@@ -1,1 +1,1 @@
-LoadModule authopenid_module /usr/lib/apache2/modules/mod_auth_openid.so
+LoadModule authopenid_module <%= "/usr/#{@libdir}/#{@apache_name}/modules/mod_auth_openid.so" %>
