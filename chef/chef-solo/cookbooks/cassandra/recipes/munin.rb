@@ -70,13 +70,17 @@ plugin_names.each do |plugin_name|
 end
 
 node_ip_addr = %x(/sbin/ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}').gsub(/\n/, '')
-include_recipe "munin::server" if node[:munin][:servers].include?({ "ipaddress" => node_ip_addr })
 
-bash "remove basic auth" do
-  code <<-EOH
-  sed -i'' -e 's/^\(Auth.*\)$/#\1/' /var/www/html/munin/.htaccess
-  sed -i'' -e 's/^\(require valid-user\).*/#\1/' /var/www/html/munin/.htaccess
-  EOH
-  not_if "grep -q '^#Auth'" 
+if node[:munin][:servers].include?({ "ipaddress" => node_ip_addr })
+  include_recipe "munin::server" 
+  bash "remove basic auth" do
+    only_if "grep -q '^Auth' /var/www/html/munin/.htaccess" 
+    notifies :reload, resources(:service => "apache2")
+    # Using single-quote heredoc keeps us from escaping capture group \1makes 
+    # and makes string easier to read
+    code <<-'EOH'
+    sed -i"" -e "s/^\(Auth.*\)$/#\1/" /var/www/html/munin/.htaccess
+    sed -i"" -e "s/^\(require valid-user\).*/#\1/" /var/www/html/munin/.htaccess
+    EOH
+  end
 end
-
