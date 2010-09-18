@@ -20,6 +20,14 @@
 #
 include_recipe "munin::client"
 
+# Might move this to jmx_ script/plugin
+file "/var/lib/munin/plugin-state/yum.state" do
+  owner "munin"
+  group "munin"
+  mode  "0664"
+  action :create
+end
+
 jmx_utils = %w( jmx_ jmxquery.jar )
 
 directory "/usr/share/munin/plugins" do
