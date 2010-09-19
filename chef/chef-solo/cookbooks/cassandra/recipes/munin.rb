@@ -47,16 +47,16 @@ jmx_utils.each do |jmx_util|
 end
 
 column_family_plugin_names = Array.new
-fields = %w( keycache latency livesize ops rowcache sstables )
+dimensions = %w( keycache latency livesize ops rowcache sstables )
 
 node[:cassandra][:keyspaces].each_pair do |kname, keyspace|
   keyspace[:columns].each_key do |cname|
-    fields.each do |field|
-      column_family_plugin_names << column_family_plugin = "#{kname}_#{cname}_#{field}"
+    dimensions.each do |dimension|
+      column_family_plugin_names << column_family_plugin = "#{kname.downcase}_#{cname.downcase}_#{dimension}"
 
-      template "/usr/share/munin/plugins/#{column_family_plugin_name}.conf" do
+      template "/usr/share/munin/plugins/#{column_family_plugin}.conf" do
         variables :keyspace => kname, :column_family => cname
-        source "column_family_#{field}.conf.erb"
+        source "column_family_#{dimension}.conf.erb"
         owner "root"
         group "root"
         mode 0644
@@ -91,6 +91,7 @@ node_ip_addr = node_ip_addr || %x(/sbin/ifconfig  | grep 'inet addr:'| grep -v '
 
 if node[:munin][:servers].include?({ "ipaddress" => node_ip_addr })
   include_recipe "munin::server" 
+
   bash "remove basic auth" do
     only_if "grep -q '^Auth' /var/www/html/munin/.htaccess" 
     notifies :reload, resources(:service => "apache2")
