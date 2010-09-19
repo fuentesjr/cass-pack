@@ -1,5 +1,5 @@
 module CassandraHelper
-  def self.get_riptano_repo_pkg_info(os, base_ver, arch)
+  def self.riptano_repo_pkg_info(os, base_ver, arch)
     # Riptano Repo Packages
     # http://rpm.riptano.com/EL/5/i386/        riptano-release-5-1.el5.noarch.rpm
     # http://rpm.riptano.com/EL/5/x86_64/      riptano-release-5-1.el5.noarch.rpm

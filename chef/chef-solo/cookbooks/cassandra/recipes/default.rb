@@ -29,14 +29,14 @@ node[:cassandra][:thrift_addr] = node_ip_addr
 
 case node[:platform]
 when "centos","redhat","fedora"
-  ruby_block "refresh_yum_cache" do
+  ruby_block "Flush Yum Cache" do
     block do
       Chef::Provider::Package::Yum::YumCache.instance.flush
     end
     action :nothing
   end
 
-  repo_pkg_info = CassandraHelper::get_riptano_repo_pkg_info(node[:platform], node[:platform_version].to_i, node[:kernel][:machine])
+  repo_pkg_info = CassandraHelper::riptano_repo_pkg_info(node[:platform], node[:platform_version].to_i, node[:kernel][:machine])
   remote_file "/tmp/#{repo_pkg_info[:filename]}" do
     source repo_pkg_info[:url] 
     owner "root"
