@@ -3,7 +3,6 @@
 # Cookbook Name:: cassandra
 # Recipe:: munin
 #
-# Copyright 2010, Benjamin Black
 # Copyright 2010, Salvador Fuentes
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,17 +46,28 @@ jmx_utils.each do |jmx_util|
   end
 end
 
-plugin_names = %w(
-  compactions_bytes
-  compactions_pending
-  flush_stage_pending
-  hh_pending
-  jvm_cpu
-  jvm_memory
-  ops_pending
-  storageproxy_latency
-  storageproxy_ops
-)
+column_family_plugin_names = Array.new
+fields = %w( keycache latency livesize ops rowcache sstables )
+
+node[:cassandra][:keyspaces].each_pair do |kname, keyspace|
+  keyspace[:columns].each_key do |cname|
+    fields.each do |field|
+      column_family_plugin_names << column_family_plugin = "#{kname}_#{cname}_#{field}"
+
+      template "/usr/share/munin/plugins/#{column_family_plugin_name}.conf" do
+        variables :keyspace => kname, :column_family => cname
+        source "column_family_#{field}.conf.erb"
+        owner "root"
+        group "root"
+        mode 0644
+      end
+    end
+  end
+end
+
+plugin_names = %w( compactions_bytes compactions_pending 
+  flush_stage_pending hh_pending jvm_cpu jvm_memory ops_pending 
+  storageproxy_latency storageproxy_ops )
 
 plugin_names.each do |plugin_name|
   cookbook_file "/usr/share/munin/plugins/#{plugin_name}.conf" do
@@ -69,23 +79,23 @@ plugin_names.each do |plugin_name|
   end
 end
 
-plugin_names.each do |plugin_name|
+plugins = plugin_names + column_family_plugin_names
+plugins.each do |plugin_name|
   munin_plugin "jmx_" do
     plugin plugin_name
-    # create_file true
-    # enable false if jmx_utils.include?(plugin_name)
   end
 end
 
-node_ip_addr = %x(/sbin/ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}').gsub(/\n/, '')
+node_ip_addr = node[:ipaddress]
+node_ip_addr = node_ip_addr || %x(/sbin/ifconfig  | grep 'inet addr:'| grep -v '127.0.0.1' | cut -d: -f2 | awk '{ print $1}').gsub(/\n/, '')
 
 if node[:munin][:servers].include?({ "ipaddress" => node_ip_addr })
   include_recipe "munin::server" 
   bash "remove basic auth" do
     only_if "grep -q '^Auth' /var/www/html/munin/.htaccess" 
     notifies :reload, resources(:service => "apache2")
-    # Using single-quote heredoc keeps us from escaping capture group \1makes 
-    # and makes string easier to read
+    # Using single-quote heredoc keeps us from escaping capture group \1 and 
+    # makes string easier to read
     code <<-'EOH'
     sed -i"" -e "s/^\(Auth.*\)$/#\1/" /var/www/html/munin/.htaccess
     sed -i"" -e "s/^\(require valid-user\).*/#\1/" /var/www/html/munin/.htaccess
