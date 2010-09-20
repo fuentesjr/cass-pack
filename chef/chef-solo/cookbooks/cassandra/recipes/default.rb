@@ -85,3 +85,4 @@ template "/etc/cassandra/storage-conf.xml" do
 end
 
 include_recipe "cassandra::munin"
+include_recipe "cassandra::backups"
