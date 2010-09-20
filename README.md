@@ -9,3 +9,6 @@ but it should work with chef-server with minor modifications.
 
 Credit to Benjamin Black for his work:
   http://github.com/b/cookbooks/tree/cassandra
+
+Credit also to James Golick and Jonathan Ellis
+  http://github.com/jamesgolick/cassandra-munin-plugins.git
