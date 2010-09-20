@@ -48,6 +48,7 @@ example_keyspace_config = {
 }
 
 default.cassandra.cluster_name  = "TestCluster"
+default.cassandra.admins  = []
 default.cassandra.auto_bootstrap  = false
 default.cassandra.keyspaces = example_keyspace_config
 default.cassandra.authenticator = "org.apache.cassandra.auth.AllowAllAuthenticator"

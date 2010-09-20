@@ -9,7 +9,8 @@
     ]
   },
   "cassandra": { 
-    "seeds": ["192.168.123.201", "192.168.123.202"]
+    "seeds": ["192.168.123.201", "192.168.123.202"],
+    "admins": ["fuentesjr@gmail.com"]
   }, 
   "run_list": ["recipe[cassandra]"]
 }
