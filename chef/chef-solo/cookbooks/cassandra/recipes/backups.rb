@@ -19,15 +19,17 @@
 #
 
 cron "snapshot" do
+  mailto node[:cassandra][:admins].join(', ').dump
   user "root"
-  hour "11"
+  hour "5"
   minute "1"
-  command "/usr/bin/env nodetool --host localhost --port 8585 snapshot",
+  command "/usr/bin/env nodetool -host localhost snapshot"
 end
 
 cron "clear snapshot" do
+  mailto node[:cassandra][:admins].join(', ').dump
   user "root"
-  hour "0"
+  hour "20"
   minute "1"
-  command "/usr/bin/env nodetool --host localhost --port 8585 clearsnapshot && /usr/bin/env nodetool --host localhost --port 8585 snapshot",
+  command "/usr/bin/env nodetool -host localhost clearsnapshot && /usr/bin/env nodetool -host localhost snapshot"
 end
