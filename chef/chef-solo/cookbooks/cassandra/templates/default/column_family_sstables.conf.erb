@@ -1,0 +1,9 @@
+graph_title <%= @keyspace %>.<%= @column_family %> SSTable count
+graph_vlabel SSTables
+graph_category Cassandra
+
+size.label <%= @column_family %> sstable count
+size.jmxObjectName org.apache.cassandra.db:type=ColumnFamilyStores,keyspace=<%= @keyspace %>,columnfamily=<%= @column_family %>
+size.jmxAttributeName LiveSSTableCount
+size.min 0
+size.graph yes

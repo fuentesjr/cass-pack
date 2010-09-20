@@ -7,8 +7,13 @@ distributions package mechanism (apt or yum) and then pushes a tarball of
 recipes which are executed. At this point it has only been tested on chef-solo, 
 but it should work with chef-server with minor modifications.
 
-Credit to Benjamin Black for his work on:
+Credits
+================================================================================
+To Benjamin Black for his early work on:
   http://github.com/b/cookbooks/tree/cassandra
 
-And credit to Edward Capriolo for his Puppet work/idea:
+To James Golick and Jonathan Ellis for their work on the munin plugins
+  http://github.com/jamesgolick/cassandra-munin-plugins.git
+
+To Edward Capriolo for his Puppet work/idea:
   http://www.edwardcapriolo.com/roller/edwardcapriolo/entry/cassandra_backup_is_a_snap

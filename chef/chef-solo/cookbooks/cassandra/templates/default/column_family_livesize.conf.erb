@@ -1,0 +1,9 @@
+graph_title <%= @keyspace %>.<%= @column_family %> Live size on disk
+graph_vlabel Size in bytes
+graph_category Cassandra
+
+size.label <%= @column_family %> size on disk
+size.jmxObjectName org.apache.cassandra.db:type=ColumnFamilyStores,keyspace=<%= @keyspace %>,columnfamily=<%= @column_family %>
+size.jmxAttributeName LiveDiskSpaceUsed
+size.min 0
+size.graph yes
